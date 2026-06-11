@@ -15,6 +15,9 @@
     --zero: #4a5568;
     --error: #ff6b6b;
     --hover: #82aaff;
+    --diff: #ff6b6b;
+    --slot-a: #7fdbca;
+    --slot-b: #c792ea;
   }
   * { box-sizing: border-box; }
   body {
@@ -25,34 +28,94 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
   h1 {
-    margin: 0 0 24px;
+    margin: 0 0 20px;
     font-size: 20px;
     font-weight: 500;
     color: var(--accent);
   }
-  .container { max-width: 1100px; margin: 0 auto; }
-  .field {
+  .container { max-width: 1400px; margin: 0 auto; display: flex; gap: 24px; align-items: flex-start; }
+  .main { flex: 1; min-width: 0; }
+
+  .mode-toggle {
+    display: inline-flex;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px;
     margin-bottom: 20px;
   }
-  label {
+  .mode-toggle button {
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .mode-toggle button.active {
+    background: var(--border);
+    color: var(--text);
+  }
+
+  .value-slot {
+    margin-bottom: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel);
+    border-left-width: 4px;
+  }
+  .value-slot[data-slot="a"] { border-left-color: var(--slot-a); }
+  .value-slot[data-slot="b"] { border-left-color: var(--slot-b); }
+  .slot-label {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 10px;
+    padding: 2px 10px;
+    border-radius: 3px;
+    background: var(--border);
+  }
+  .value-slot[data-slot="a"] .slot-label { background: var(--slot-a); color: #0f1419; }
+  .value-slot[data-slot="b"] .slot-label { background: var(--slot-b); color: #0f1419; }
+  body.mode-single .slot-label { display: none; }
+  body.mode-single .value-slot { padding: 0; border: none; background: transparent; border-left: none; margin-bottom: 0; }
+  body.mode-single .value-slot[data-slot="b"] { display: none; }
+
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  label.field-label {
     display: block;
-    font-size: 12px;
+    font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 1px;
     color: var(--muted);
     margin-bottom: 6px;
   }
+  body.mode-single label.field-label {
+    font-size: 12px;
+  }
   input[type="text"] {
     width: 100%;
-    padding: 12px 14px;
-    background: var(--panel);
+    padding: 10px 12px;
+    background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 5px;
     color: var(--text);
     font-family: "SF Mono", Menlo, Consolas, monospace;
-    font-size: 16px;
+    font-size: 15px;
     outline: none;
     transition: border-color 0.15s;
+  }
+  body.mode-single input[type="text"] {
+    background: var(--panel);
+    padding: 12px 14px;
+    font-size: 16px;
+    border-radius: 6px;
   }
   input[type="text"]:focus { border-color: var(--accent); }
   input.error { border-color: var(--error); }
@@ -61,7 +124,7 @@
     display: flex;
     gap: 16px;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     font-size: 13px;
     color: var(--muted);
   }
@@ -70,9 +133,6 @@
     align-items: center;
     gap: 6px;
     margin: 0;
-    text-transform: none;
-    letter-spacing: 0;
-    font-size: 13px;
     cursor: pointer;
   }
   select {
@@ -82,6 +142,12 @@
     border-radius: 4px;
     padding: 4px 8px;
     font-family: inherit;
+  }
+  .diff-summary {
+    margin-left: auto;
+    color: var(--diff);
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 12px;
   }
 
   .bit-viz {
@@ -102,6 +168,22 @@
     gap: 12px;
     justify-content: flex-end;
   }
+  .compare-row-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .compare-row-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .compare-row-label.a { color: var(--slot-a); }
+  .compare-row-label.b { color: var(--slot-b); }
+  .compare-row-label.d { color: var(--diff); }
   .nibble {
     display: flex;
     flex-direction: column;
@@ -133,19 +215,31 @@
     user-select: none;
     transition: transform 0.08s, box-shadow 0.08s;
   }
-  .bit.one {
-    background: var(--one);
-    color: #1a1a1a;
+  .bit.one { background: var(--one); color: #1a1a1a; }
+  .bit.zero { background: var(--zero); color: #1a1a1a; }
+  .bit.diff { box-shadow: inset 0 0 0 2px var(--diff); }
+  .bit.diff-marker {
+    background: transparent;
+    color: var(--diff);
+    box-shadow: inset 0 0 0 2px var(--diff);
+    cursor: default;
   }
-  .bit.zero {
-    background: var(--zero);
-    color: #1a1a1a;
+  .bit.same-marker {
+    background: transparent;
+    color: var(--muted);
+    cursor: default;
   }
   .bit:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(130, 170, 255, 0.4);
     outline: 2px solid var(--hover);
   }
+  .bit.diff-marker:hover, .bit.same-marker:hover {
+    transform: none;
+    box-shadow: inset 0 0 0 2px var(--diff);
+    outline: none;
+  }
+  .bit.same-marker:hover { box-shadow: none; }
   .bit .tooltip {
     position: absolute;
     bottom: 100%;
@@ -166,6 +260,7 @@
     border: 1px solid var(--border);
   }
   .bit:hover .tooltip { opacity: 1; }
+  .bit.diff-marker:hover .tooltip, .bit.same-marker:hover .tooltip { opacity: 0; }
   .bit .tooltip::after {
     content: '';
     position: absolute;
@@ -187,190 +282,566 @@
     margin-top: 4px;
     min-height: 16px;
   }
+
+  /* Sidebar */
+  .sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    position: sticky;
+    top: 32px;
+    max-height: calc(100vh - 64px);
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar h2 {
+    margin: 0 0 12px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .save-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .save-row input {
+    flex: 1; min-width: 0; padding: 8px 10px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text); font-family: inherit; font-size: 13px; outline: none;
+  }
+  .save-row input:focus { border-color: var(--accent); }
+  .save-buttons { display: flex; gap: 6px; margin-bottom: 12px; }
+  .save-buttons button {
+    flex: 1; background: var(--accent); color: #0f1419; border: none;
+    border-radius: 4px; padding: 7px 10px; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .save-buttons button[data-save="b"] { background: var(--slot-b); }
+  .save-buttons button:disabled { background: var(--zero); color: var(--muted); cursor: not-allowed; }
+  body.mode-single .save-buttons button[data-save="b"] { display: none; }
+  body.mode-single .save-buttons button[data-save="a"]::before { content: "Save"; }
+  body.mode-single .save-buttons button[data-save="a"] .lbl { display: none; }
+
+  .saves-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
+  .saves-list li {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 10px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 4px; margin-bottom: 6px;
+    transition: border-color 0.1s, background 0.1s;
+  }
+  .saves-list li.clickable { cursor: pointer; }
+  .saves-list li.clickable:hover { border-color: var(--accent); background: #131922; }
+  .save-info { flex: 1; min-width: 0; overflow: hidden; }
+  .save-info.clickable { cursor: pointer; }
+  .save-name {
+    font-size: 13px; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .save-val {
+    font-family: "SF Mono", Menlo, monospace; font-size: 11px; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .save-load-btn {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 3px; padding: 3px 7px; font-size: 11px;
+    cursor: pointer; font-family: inherit; font-weight: 600;
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
+  }
+  .save-load-btn:hover { border-color: var(--text); color: var(--text); }
+  .save-load-btn.active[data-target="a"] {
+    background: var(--slot-a); color: #0f1419; border-color: var(--slot-a);
+  }
+  .save-load-btn.active[data-target="b"] {
+    background: var(--slot-b); color: #0f1419; border-color: var(--slot-b);
+  }
+  body.mode-single .save-load-btn { display: none; }
+  body.mode-compare .save-info { cursor: default; }
+  body.mode-compare .saves-list li { cursor: default; }
+  body.mode-compare .saves-list li:hover { border-color: var(--border); background: var(--bg); }
+  .saves-list li.active-a { border-left: 3px solid var(--slot-a); }
+  .saves-list li.active-b { border-left: 3px solid var(--slot-b); }
+  .saves-list li.active-ab {
+    border-left: 3px solid var(--slot-a);
+    border-right: 3px solid var(--slot-b);
+  }
+  .save-del {
+    background: transparent; border: none; color: var(--muted); font-size: 16px;
+    cursor: pointer; padding: 2px 6px; border-radius: 3px; line-height: 1;
+  }
+  .save-del:hover { color: var(--error); background: rgba(255,107,107,0.1); }
+  .saves-empty { color: var(--muted); font-size: 12px; font-style: italic; text-align: center; padding: 12px; }
 </style>
 </head>
-<body>
+<body class="mode-single">
 <div class="container">
-  <h1>Binary / Decimal / Hexadecimal Converter</h1>
+  <div class="main">
+    <h1>Binary / Decimal / Hexadecimal Converter</h1>
 
-  <div class="field">
-    <label for="dec">Decimal</label>
-    <input type="text" id="dec" autocomplete="off" placeholder="e.g. 42">
-    <div class="error-msg" id="dec-err"></div>
+    <div class="mode-toggle" id="mode-toggle">
+      <button data-mode="single" class="active">Single</button>
+      <button data-mode="compare">Compare</button>
+    </div>
+
+    <div class="value-slot" data-slot="a">
+      <div class="slot-label">A</div>
+      <div class="field">
+        <label class="field-label" for="a-dec">Decimal</label>
+        <input type="text" id="a-dec" autocomplete="off" placeholder="e.g. 42">
+        <div class="error-msg" id="a-dec-err"></div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="a-hex">Hexadecimal</label>
+        <input type="text" id="a-hex" autocomplete="off" placeholder="e.g. 2A or 0x2A">
+        <div class="error-msg" id="a-hex-err"></div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="a-bin">Binary</label>
+        <input type="text" id="a-bin" autocomplete="off" placeholder="e.g. 101010">
+        <div class="error-msg" id="a-bin-err"></div>
+      </div>
+    </div>
+
+    <div class="value-slot" data-slot="b">
+      <div class="slot-label">B</div>
+      <div class="field">
+        <label class="field-label" for="b-dec">Decimal</label>
+        <input type="text" id="b-dec" autocomplete="off" placeholder="e.g. 42">
+        <div class="error-msg" id="b-dec-err"></div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="b-hex">Hexadecimal</label>
+        <input type="text" id="b-hex" autocomplete="off" placeholder="e.g. 2A or 0x2A">
+        <div class="error-msg" id="b-hex-err"></div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="b-bin">Binary</label>
+        <input type="text" id="b-bin" autocomplete="off" placeholder="e.g. 101010">
+        <div class="error-msg" id="b-bin-err"></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <label>
+        Width:
+        <select id="width">
+          <option value="auto">Auto</option>
+          <option value="8">8-bit</option>
+          <option value="16">16-bit</option>
+          <option value="32" selected>32-bit</option>
+          <option value="64">64-bit</option>
+          <option value="128">128-bit</option>
+        </select>
+      </label>
+      <div class="diff-summary" id="diff-summary"></div>
+    </div>
+
+    <div class="bit-viz" id="viz">
+      <div class="empty">Enter a value to see the bit layout</div>
+    </div>
   </div>
 
-  <div class="field">
-    <label for="hex">Hexadecimal</label>
-    <input type="text" id="hex" autocomplete="off" placeholder="e.g. 2A or 0x2A">
-    <div class="error-msg" id="hex-err"></div>
-  </div>
-
-  <div class="field">
-    <label for="bin">Binary</label>
-    <input type="text" id="bin" autocomplete="off" placeholder="e.g. 101010">
-    <div class="error-msg" id="bin-err"></div>
-  </div>
-
-  <div class="controls">
-    <label>
-      Width:
-      <select id="width">
-        <option value="auto">Auto</option>
-        <option value="8">8-bit</option>
-        <option value="16">16-bit</option>
-        <option value="32" selected>32-bit</option>
-        <option value="64">64-bit</option>
-        <option value="128">128-bit</option>
-      </select>
-    </label>
-  </div>
-
-  <div class="bit-viz" id="viz">
-    <div class="empty">Enter a value to see the bit layout</div>
-  </div>
+  <aside class="sidebar">
+    <h2>Saved Values</h2>
+    <div class="save-row">
+      <input type="text" id="save-name" placeholder="name (optional)" autocomplete="off">
+    </div>
+    <div class="save-buttons">
+      <button id="save-a" data-save="a" disabled><span class="lbl">Save A</span></button>
+      <button id="save-b" data-save="b" disabled>Save B</button>
+    </div>
+    <ul class="saves-list" id="saves-list"></ul>
+  </aside>
 </div>
 
 <script>
-  const decInput = document.getElementById('dec');
-  const hexInput = document.getElementById('hex');
-  const binInput = document.getElementById('bin');
-  const decErr = document.getElementById('dec-err');
-  const hexErr = document.getElementById('hex-err');
-  const binErr = document.getElementById('bin-err');
+  // ----- DOM refs -----
   const widthSel = document.getElementById('width');
   const viz = document.getElementById('viz');
+  const diffSummary = document.getElementById('diff-summary');
+  const modeToggle = document.getElementById('mode-toggle');
 
-  let currentValue = null; // BigInt or null
+  function makeSlot(key) {
+    const dec = document.getElementById(`${key}-dec`);
+    const hex = document.getElementById(`${key}-hex`);
+    const bin = document.getElementById(`${key}-bin`);
+    const decErr = document.getElementById(`${key}-dec-err`);
+    const hexErr = document.getElementById(`${key}-hex-err`);
+    const binErr = document.getElementById(`${key}-bin-err`);
+    return { key, dec, hex, bin, decErr, hexErr, binErr, value: null };
+  }
+  const slots = { a: makeSlot('a'), b: makeSlot('b') };
+  let mode = 'single';
+  const activeIdx = { a: null, b: null }; // saved-entry index currently pinned into each slot
 
-  function clearErrors() {
-    decErr.textContent = '';
-    hexErr.textContent = '';
-    binErr.textContent = '';
-    decInput.classList.remove('error');
-    hexInput.classList.remove('error');
-    binInput.classList.remove('error');
+  // ----- Parsing / sync -----
+  function clearSlotErrors(slot) {
+    slot.decErr.textContent = ''; slot.hexErr.textContent = ''; slot.binErr.textContent = '';
+    slot.dec.classList.remove('error'); slot.hex.classList.remove('error'); slot.bin.classList.remove('error');
   }
 
-  function updateFrom(source) {
-    clearErrors();
+  function parseFor(slot, source) {
+    clearSlotErrors(slot);
     try {
       if (source === 'dec') {
-        const s = decInput.value.trim();
-        if (s === '') { currentValue = null; }
+        const s = slot.dec.value.trim();
+        if (s === '') { slot.value = null; }
         else {
-          if (!/^-?\d+$/.test(s)) throw new Error('Decimal must be digits only');
-          currentValue = BigInt(s);
-          if (currentValue < 0n) throw new Error('Negative values not supported');
+          if (!/^\d+$/.test(s)) throw new Error('Decimal must be non-negative digits');
+          slot.value = BigInt(s);
         }
       } else if (source === 'hex') {
-        let s = hexInput.value.trim().replace(/^0x/i, '');
-        if (s === '') { currentValue = null; }
+        const s = slot.hex.value.trim().replace(/^0x/i, '');
+        if (s === '') { slot.value = null; }
         else {
           if (!/^[0-9a-fA-F]+$/.test(s)) throw new Error('Hex must be 0-9, A-F');
-          currentValue = BigInt('0x' + s);
+          slot.value = BigInt('0x' + s);
         }
       } else if (source === 'bin') {
-        const s = binInput.value.trim().replace(/[\s_]/g, '');
-        if (s === '') { currentValue = null; }
+        const s = slot.bin.value.trim().replace(/[\s_]/g, '');
+        if (s === '') { slot.value = null; }
         else {
           if (!/^[01]+$/.test(s)) throw new Error('Binary must be 0 or 1');
-          currentValue = BigInt('0b' + s);
+          slot.value = BigInt('0b' + s);
         }
       }
     } catch (e) {
-      const errEl = source === 'dec' ? decErr : source === 'hex' ? hexErr : binErr;
-      const inputEl = source === 'dec' ? decInput : source === 'hex' ? hexInput : binInput;
+      const errEl = source === 'dec' ? slot.decErr : source === 'hex' ? slot.hexErr : slot.binErr;
+      const inEl  = source === 'dec' ? slot.dec    : source === 'hex' ? slot.hex    : slot.bin;
       errEl.textContent = e.message;
-      inputEl.classList.add('error');
+      inEl.classList.add('error');
+      return false;
+    }
+    return true;
+  }
+
+  function syncOthers(slot, source) {
+    if (slot.value === null) {
+      if (source !== 'dec') slot.dec.value = '';
+      if (source !== 'hex') slot.hex.value = '';
+      if (source !== 'bin') slot.bin.value = '';
       return;
     }
-    syncOthers(source);
+    if (source !== 'dec') slot.dec.value = slot.value.toString(10);
+    if (source !== 'hex') slot.hex.value = slot.value.toString(16).toUpperCase();
+    if (source !== 'bin') slot.bin.value = slot.value.toString(2);
+  }
+
+  function handleInput(slot, source) {
+    if (!parseFor(slot, source)) return;
+    syncOthers(slot, source);
+    activeIdx[slot.key] = null; // typing or programmatic dec set means no longer pinned
     renderViz();
+    updateSaveBtnState();
+    renderSaves();
   }
 
-  function syncOthers(source) {
-    if (currentValue === null) {
-      if (source !== 'dec') decInput.value = '';
-      if (source !== 'hex') hexInput.value = '';
-      if (source !== 'bin') binInput.value = '';
-      return;
-    }
-    if (source !== 'dec') decInput.value = currentValue.toString(10);
-    if (source !== 'hex') hexInput.value = currentValue.toString(16).toUpperCase();
-    if (source !== 'bin') binInput.value = currentValue.toString(2);
+  function clearSlot(key) {
+    const slot = slots[key];
+    slot.value = null;
+    slot.dec.value = '';
+    slot.hex.value = '';
+    slot.bin.value = '';
+    clearSlotErrors(slot);
+    activeIdx[key] = null;
+    renderViz();
+    updateSaveBtnState();
+    renderSaves();
   }
 
-  function renderViz() {
-    if (currentValue === null) {
-      viz.innerHTML = '<div class="empty">Enter a value to see the bit layout</div>';
-      return;
-    }
+  function pinFromSave(key, idx, value) {
+    const slot = slots[key];
+    slot.dec.value = value;
+    if (!parseFor(slot, 'dec')) return;
+    syncOthers(slot, 'dec');
+    activeIdx[key] = idx; // override the null set by handleInput-style flow
+    renderViz();
+    updateSaveBtnState();
+    renderSaves();
+  }
 
+  for (const key of ['a', 'b']) {
+    const s = slots[key];
+    s.dec.addEventListener('input', () => handleInput(s, 'dec'));
+    s.hex.addEventListener('input', () => handleInput(s, 'hex'));
+    s.bin.addEventListener('input', () => handleInput(s, 'bin'));
+  }
+
+  // ----- Width / padding -----
+  function computeWidth(values) {
+    const lengths = values.filter(v => v !== null).map(v => v.toString(2).length);
+    const maxLen = lengths.length === 0 ? 0 : Math.max(...lengths);
     const widthMode = widthSel.value;
-    const rawBin = currentValue.toString(2);
-    let width;
     if (widthMode === 'auto') {
-      width = Math.max(4, Math.ceil(rawBin.length / 4) * 4);
-    } else {
-      width = parseInt(widthMode, 10);
-      if (rawBin.length > width) {
-        width = Math.ceil(rawBin.length / 4) * 4;
-      }
+      return Math.max(4, Math.ceil(Math.max(maxLen, 1) / 4) * 4);
     }
+    let width = parseInt(widthMode, 10);
+    if (maxLen > width) width = Math.ceil(maxLen / 4) * 4;
+    return width;
+  }
 
-    const padded = rawBin.padStart(width, '0');
-
-    // bit array: index 0 = bit 0 (LSB). padded[0] is MSB.
-    // We'll render from MSB to LSB, so we iterate padded left to right.
-    // Group into nibbles of 4 bits. Wrap rows every 32 bits for readability.
-
+  // ----- Rendering -----
+  function buildBitRow(padded, width, opts = {}) {
+    // opts: { diffMask: string of '0'/'1' aligned with padded (1 = differs), labelClass: 'a'|'b' }
     const bitsPerRow = 32;
     const numRows = Math.ceil(width / bitsPerRow);
-
-    let html = '<div class="bit-rows">';
+    let html = '';
     for (let r = 0; r < numRows; r++) {
-      // bits in this row, MSB first
-      const rowStartMsbIdx = r * bitsPerRow; // index in padded
-      const rowEndMsbIdx = Math.min(rowStartMsbIdx + bitsPerRow, width);
-      const rowBits = padded.slice(rowStartMsbIdx, rowEndMsbIdx);
+      const rowStart = r * bitsPerRow;
+      const rowEnd = Math.min(rowStart + bitsPerRow, width);
+      const rowBits = padded.slice(rowStart, rowEnd);
+      const rowDiff = opts.diffMask ? opts.diffMask.slice(rowStart, rowEnd) : null;
 
       html += '<div class="bit-row">';
-      // chunk into nibbles
       for (let i = 0; i < rowBits.length; i += 4) {
         const nibble = rowBits.slice(i, i + 4);
-        // bit index for each char: bit index = width - 1 - (rowStartMsbIdx + i + j)
-        let nibbleHtml = '<div class="nibble"><div class="nibble-bits">';
         let nibbleHexVal = 0;
+        let nibbleHtml = '<div class="nibble"><div class="nibble-bits">';
         for (let j = 0; j < nibble.length; j++) {
           const ch = nibble[j];
-          const bitIdx = width - 1 - (rowStartMsbIdx + i + j);
+          const bitIdx = width - 1 - (rowStart + i + j);
           const bitVal = parseInt(ch, 10);
+          const isDiff = rowDiff && rowDiff[i + j] === '1';
           const placeVal = bitVal === 1 ? (1n << BigInt(bitIdx)).toString() : '0';
           nibbleHexVal = nibbleHexVal * 2 + bitVal;
-          nibbleHtml += `<div class="bit ${ch === '1' ? 'one' : 'zero'}" data-idx="${bitIdx}">`
+          const classes = `bit ${ch === '1' ? 'one' : 'zero'}${isDiff ? ' diff' : ''}`;
+          nibbleHtml += `<div class="${classes}">`
             + ch
             + `<div class="tooltip">bit ${bitIdx}${bitVal === 1 ? ` &middot; 2<sup>${bitIdx}</sup> = ${placeVal}` : ''}</div>`
             + `</div>`;
         }
         nibbleHtml += '</div>';
-        // label: hex digit for this nibble, plus bit range
         const hexDigit = nibbleHexVal.toString(16).toUpperCase();
-        const highBit = width - 1 - (rowStartMsbIdx + i);
-        const lowBit = width - 1 - (rowStartMsbIdx + i + nibble.length - 1);
+        const highBit = width - 1 - (rowStart + i);
+        const lowBit = width - 1 - (rowStart + i + nibble.length - 1);
         nibbleHtml += `<div class="nibble-label">${hexDigit} <span style="opacity:0.6">[${highBit}:${lowBit}]</span></div>`;
         nibbleHtml += '</div>';
         html += nibbleHtml;
       }
       html += '</div>';
     }
-    html += '</div>';
-    viz.innerHTML = html;
+    return html;
   }
 
-  decInput.addEventListener('input', () => updateFrom('dec'));
-  hexInput.addEventListener('input', () => updateFrom('hex'));
-  binInput.addEventListener('input', () => updateFrom('bin'));
+  function buildDiffRow(diffMask, width) {
+    const bitsPerRow = 32;
+    const numRows = Math.ceil(width / bitsPerRow);
+    let html = '';
+    for (let r = 0; r < numRows; r++) {
+      const rowStart = r * bitsPerRow;
+      const rowEnd = Math.min(rowStart + bitsPerRow, width);
+      const rowDiff = diffMask.slice(rowStart, rowEnd);
+      html += '<div class="bit-row">';
+      for (let i = 0; i < rowDiff.length; i += 4) {
+        const nibble = rowDiff.slice(i, i + 4);
+        let nibbleHtml = '<div class="nibble"><div class="nibble-bits">';
+        for (let j = 0; j < nibble.length; j++) {
+          const isDiff = nibble[j] === '1';
+          const cls = isDiff ? 'bit diff-marker' : 'bit same-marker';
+          const ch = isDiff ? '×' : '·';
+          nibbleHtml += `<div class="${cls}">${ch}</div>`;
+        }
+        nibbleHtml += '</div><div class="nibble-label">&nbsp;</div></div>';
+        html += nibbleHtml;
+      }
+      html += '</div>';
+    }
+    return html;
+  }
+
+  function renderViz() {
+    if (mode === 'single') {
+      const v = slots.a.value;
+      if (v === null) {
+        viz.innerHTML = '<div class="empty">Enter a value to see the bit layout</div>';
+        diffSummary.textContent = '';
+        return;
+      }
+      const width = computeWidth([v]);
+      const padded = v.toString(2).padStart(width, '0');
+      viz.innerHTML = '<div class="bit-rows">' + buildBitRow(padded, width) + '</div>';
+      diffSummary.textContent = '';
+    } else {
+      const va = slots.a.value, vb = slots.b.value;
+      if (va === null && vb === null) {
+        viz.innerHTML = '<div class="empty">Enter values into A and B to see the comparison</div>';
+        diffSummary.textContent = '';
+        return;
+      }
+      const width = computeWidth([va, vb]);
+      const bothSet = va !== null && vb !== null;
+      let diffMask = null;
+      let diffCount = 0;
+      if (bothSet) {
+        const padA0 = va.toString(2).padStart(width, '0');
+        const padB0 = vb.toString(2).padStart(width, '0');
+        diffMask = '';
+        for (let i = 0; i < width; i++) {
+          const d = padA0[i] !== padB0[i] ? '1' : '0';
+          diffMask += d;
+          if (d === '1') diffCount++;
+        }
+      }
+      let html = '<div class="bit-rows">';
+      if (va !== null) {
+        const padA = va.toString(2).padStart(width, '0');
+        html += '<div class="compare-row-group"><div class="compare-row-label a">A</div>'
+              + buildBitRow(padA, width, { diffMask }) + '</div>';
+      }
+      if (vb !== null) {
+        const padB = vb.toString(2).padStart(width, '0');
+        html += '<div class="compare-row-group"><div class="compare-row-label b">B</div>'
+              + buildBitRow(padB, width, { diffMask }) + '</div>';
+      }
+      if (bothSet) {
+        html += '<div class="compare-row-group"><div class="compare-row-label d">A &oplus; B (diff)</div>'
+              + buildDiffRow(diffMask, width) + '</div>';
+      }
+      html += '</div>';
+      viz.innerHTML = html;
+      if (va !== null && vb !== null) {
+        diffSummary.textContent = `${diffCount} bit${diffCount === 1 ? '' : 's'} differ`;
+      } else {
+        diffSummary.textContent = '';
+      }
+    }
+  }
+
   widthSel.addEventListener('change', renderViz);
+
+  // ----- Mode toggle -----
+  function setMode(m) {
+    mode = m;
+    document.body.classList.remove('mode-single', 'mode-compare');
+    document.body.classList.add(`mode-${m}`);
+    for (const btn of modeToggle.querySelectorAll('button')) {
+      btn.classList.toggle('active', btn.dataset.mode === m);
+    }
+    renderViz();
+    updateSaveBtnState();
+    renderSaves();
+  }
+  modeToggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-mode]');
+    if (btn) setMode(btn.dataset.mode);
+  });
+
+  // ----- Saved values -----
+  const STORAGE_KEY = 'hexdecbin.saves.v1';
+  const saveAbtn = document.getElementById('save-a');
+  const saveBbtn = document.getElementById('save-b');
+  const saveNameInput = document.getElementById('save-name');
+  const savesList = document.getElementById('saves-list');
+
+  function loadSaves() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
+  }
+  function persistSaves(saves) { localStorage.setItem(STORAGE_KEY, JSON.stringify(saves)); }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  function renderSaves() {
+    const saves = loadSaves();
+    if (saves.length === 0) {
+      savesList.innerHTML = '<div class="saves-empty">No saved values yet</div>';
+      return;
+    }
+    savesList.innerHTML = '';
+    saves.forEach((s, i) => {
+      const v = BigInt(s.value);
+      const hex = '0x' + v.toString(16).toUpperCase();
+      const dec = v.toString(10);
+      const displayName = s.name ? escapeHtml(s.name) : hex;
+      const displayVal = s.name ? `${hex} · ${dec}` : dec;
+      const aActive = activeIdx.a === i;
+      const bActive = activeIdx.b === i;
+      const clickable = mode === 'single' ? 'clickable' : '';
+
+      const li = document.createElement('li');
+      const stateClass = (aActive && bActive) ? 'active-ab' : aActive ? 'active-a' : bActive ? 'active-b' : '';
+      li.className = `${clickable} ${stateClass}`.trim();
+      li.dataset.idx = i;
+      li.innerHTML = `
+        <div class="save-info ${clickable}">
+          <div class="save-name">${displayName}</div>
+          <div class="save-val">${escapeHtml(displayVal)}</div>
+        </div>
+        <button type="button" class="save-load-btn ${aActive ? 'active' : ''}" data-target="a" title="${aActive ? 'Unpin from A' : 'Pin as A'}">A</button>
+        <button type="button" class="save-load-btn ${bActive ? 'active' : ''}" data-target="b" title="${bActive ? 'Unpin from B' : 'Pin as B'}">B</button>
+        <button type="button" class="save-del" title="Delete">×</button>
+      `;
+
+      const aBtn = li.querySelector('.save-load-btn[data-target="a"]');
+      const bBtn = li.querySelector('.save-load-btn[data-target="b"]');
+      const dBtn = li.querySelector('.save-del');
+      const info = li.querySelector('.save-info');
+
+      const togglePin = (key) => {
+        if (activeIdx[key] === i) clearSlot(key);
+        else pinFromSave(key, i, s.value);
+      };
+
+      aBtn.addEventListener('click', (e) => { e.stopPropagation(); togglePin('a'); });
+      bBtn.addEventListener('click', (e) => { e.stopPropagation(); togglePin('b'); });
+      dBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const arr = loadSaves();
+        arr.splice(i, 1);
+        persistSaves(arr);
+        for (const k of ['a', 'b']) {
+          if (activeIdx[k] === i) activeIdx[k] = null;
+          else if (activeIdx[k] !== null && activeIdx[k] > i) activeIdx[k]--;
+        }
+        renderSaves();
+      });
+      info.addEventListener('click', () => {
+        if (mode === 'single') togglePin('a');
+      });
+
+      savesList.appendChild(li);
+    });
+  }
+
+  function updateSaveBtnState() {
+    saveAbtn.disabled = slots.a.value === null;
+    saveBbtn.disabled = slots.b.value === null;
+  }
+
+  function saveSlot(key) {
+    const slot = slots[key];
+    if (slot.value === null) return;
+    const saves = loadSaves();
+    saves.unshift({ name: saveNameInput.value.trim(), value: slot.value.toString(10) });
+    persistSaves(saves);
+    // Existing pinned indices shift by +1 because we prepended; mark new entry as pinned for this slot
+    for (const k of ['a', 'b']) {
+      if (activeIdx[k] !== null) activeIdx[k]++;
+    }
+    activeIdx[key] = 0;
+    saveNameInput.value = '';
+    renderSaves();
+  }
+
+  saveAbtn.addEventListener('click', () => saveSlot('a'));
+  saveBbtn.addEventListener('click', () => saveSlot('b'));
+
+  saveNameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !saveAbtn.disabled) saveSlot('a');
+  });
+
+  renderSaves();
+  updateSaveBtnState();
 </script>
 </body>
 </html>
