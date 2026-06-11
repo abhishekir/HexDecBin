@@ -829,12 +829,19 @@
     if (slot.value === null) return;
     const saves = loadSaves();
     const valueStr = slot.value.toString(10);
+    const newName = saveNameInput.value.trim();
     const existingIdx = saves.findIndex(e => e.value === valueStr);
     if (existingIdx !== -1) {
-      // Already saved — just pin the existing entry instead of creating a duplicate
+      // Already saved — pin the existing entry instead of duplicating.
+      // If the user typed a new name, rename the existing entry so the action is visible.
+      if (newName !== '') {
+        saves[existingIdx].name = newName;
+        persistSaves(saves);
+        saveNameInput.value = '';
+      }
       activeIdx[key] = existingIdx;
     } else {
-      saves.unshift({ name: saveNameInput.value.trim(), value: valueStr });
+      saves.unshift({ name: newName, value: valueStr });
       persistSaves(saves);
       for (const k of ['a', 'b']) {
         if (activeIdx[k] !== null) activeIdx[k]++;
