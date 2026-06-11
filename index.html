@@ -234,6 +234,9 @@
     box-shadow: 0 4px 12px rgba(130, 170, 255, 0.4);
     outline: 2px solid var(--hover);
   }
+  .bit.diff:hover {
+    box-shadow: inset 0 0 0 2px var(--diff), 0 4px 12px rgba(130, 170, 255, 0.4);
+  }
   .bit.diff-marker:hover, .bit.same-marker:hover {
     transform: none;
     box-shadow: inset 0 0 0 2px var(--diff);
@@ -741,7 +744,11 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(e => {
+        if (!e || typeof e.value !== 'string') return false;
+        try { BigInt(e.value); return true; } catch { return false; }
+      });
     } catch { return []; }
   }
   function persistSaves(saves) { localStorage.setItem(STORAGE_KEY, JSON.stringify(saves)); }
@@ -785,7 +792,6 @@
       const aBtn = li.querySelector('.save-load-btn[data-target="a"]');
       const bBtn = li.querySelector('.save-load-btn[data-target="b"]');
       const dBtn = li.querySelector('.save-del');
-      const info = li.querySelector('.save-info');
 
       const togglePin = (key) => {
         if (activeIdx[key] === i) clearSlot(key);
@@ -805,7 +811,7 @@
         }
         renderSaves();
       });
-      info.addEventListener('click', () => {
+      li.addEventListener('click', () => {
         if (mode === 'single') togglePin('a');
       });
 
@@ -822,14 +828,20 @@
     const slot = slots[key];
     if (slot.value === null) return;
     const saves = loadSaves();
-    saves.unshift({ name: saveNameInput.value.trim(), value: slot.value.toString(10) });
-    persistSaves(saves);
-    // Existing pinned indices shift by +1 because we prepended; mark new entry as pinned for this slot
-    for (const k of ['a', 'b']) {
-      if (activeIdx[k] !== null) activeIdx[k]++;
+    const valueStr = slot.value.toString(10);
+    const existingIdx = saves.findIndex(e => e.value === valueStr);
+    if (existingIdx !== -1) {
+      // Already saved — just pin the existing entry instead of creating a duplicate
+      activeIdx[key] = existingIdx;
+    } else {
+      saves.unshift({ name: saveNameInput.value.trim(), value: valueStr });
+      persistSaves(saves);
+      for (const k of ['a', 'b']) {
+        if (activeIdx[k] !== null) activeIdx[k]++;
+      }
+      activeIdx[key] = 0;
+      saveNameInput.value = '';
     }
-    activeIdx[key] = 0;
-    saveNameInput.value = '';
     renderSaves();
   }
 
@@ -837,7 +849,9 @@
   saveBbtn.addEventListener('click', () => saveSlot('b'));
 
   saveNameInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !saveAbtn.disabled) saveSlot('a');
+    if (e.key !== 'Enter') return;
+    if (!saveAbtn.disabled) saveSlot('a');
+    else if (mode === 'compare' && !saveBbtn.disabled) saveSlot('b');
   });
 
   renderSaves();
