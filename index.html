@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bin / Dec / Hex Converter</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #1a2028;
+    --border: #2a3441;
+    --text: #d6deeb;
+    --muted: #6b7d91;
+    --accent: #7fdbca;
+    --one: #ffcb6b;
+    --zero: #4a5568;
+    --error: #ff6b6b;
+    --hover: #82aaff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  h1 {
+    margin: 0 0 24px;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  .field {
+    margin-bottom: 20px;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  input[type="text"] {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  input.error { border-color: var(--error); }
+
+  .controls {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .controls label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  select {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-family: inherit;
+  }
+
+  .bit-viz {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 48px 20px 20px;
+    overflow-x: auto;
+  }
+  .bit-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+  }
+  .bit-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 12px;
+    justify-content: flex-end;
+  }
+  .nibble {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .nibble-bits {
+    display: flex;
+    gap: 2px;
+  }
+  .nibble-label {
+    text-align: center;
+    font-size: 10px;
+    color: var(--muted);
+    font-family: "SF Mono", Menlo, monospace;
+    margin-top: 4px;
+  }
+  .bit {
+    width: 26px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+    transition: transform 0.08s, box-shadow 0.08s;
+  }
+  .bit.one {
+    background: var(--one);
+    color: #1a1a1a;
+  }
+  .bit.zero {
+    background: var(--zero);
+    color: #1a1a1a;
+  }
+  .bit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(130, 170, 255, 0.4);
+    outline: 2px solid var(--hover);
+  }
+  .bit .tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 8px;
+    background: #000;
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: normal;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s;
+    z-index: 10;
+    border: 1px solid var(--border);
+  }
+  .bit:hover .tooltip { opacity: 1; }
+  .bit .tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--border);
+  }
+  .empty {
+    color: var(--muted);
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+  }
+  .error-msg {
+    color: var(--error);
+    font-size: 12px;
+    margin-top: 4px;
+    min-height: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Binary / Decimal / Hexadecimal Converter</h1>
+
+  <div class="field">
+    <label for="dec">Decimal</label>
+    <input type="text" id="dec" autocomplete="off" placeholder="e.g. 42">
+    <div class="error-msg" id="dec-err"></div>
+  </div>
+
+  <div class="field">
+    <label for="hex">Hexadecimal</label>
+    <input type="text" id="hex" autocomplete="off" placeholder="e.g. 2A or 0x2A">
+    <div class="error-msg" id="hex-err"></div>
+  </div>
+
+  <div class="field">
+    <label for="bin">Binary</label>
+    <input type="text" id="bin" autocomplete="off" placeholder="e.g. 101010">
+    <div class="error-msg" id="bin-err"></div>
+  </div>
+
+  <div class="controls">
+    <label>
+      Width:
+      <select id="width">
+        <option value="auto">Auto</option>
+        <option value="8">8-bit</option>
+        <option value="16">16-bit</option>
+        <option value="32" selected>32-bit</option>
+        <option value="64">64-bit</option>
+        <option value="128">128-bit</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="bit-viz" id="viz">
+    <div class="empty">Enter a value to see the bit layout</div>
+  </div>
+</div>
+
+<script>
+  const decInput = document.getElementById('dec');
+  const hexInput = document.getElementById('hex');
+  const binInput = document.getElementById('bin');
+  const decErr = document.getElementById('dec-err');
+  const hexErr = document.getElementById('hex-err');
+  const binErr = document.getElementById('bin-err');
+  const widthSel = document.getElementById('width');
+  const viz = document.getElementById('viz');
+
+  let currentValue = null; // BigInt or null
+
+  function clearErrors() {
+    decErr.textContent = '';
+    hexErr.textContent = '';
+    binErr.textContent = '';
+    decInput.classList.remove('error');
+    hexInput.classList.remove('error');
+    binInput.classList.remove('error');
+  }
+
+  function updateFrom(source) {
+    clearErrors();
+    try {
+      if (source === 'dec') {
+        const s = decInput.value.trim();
+        if (s === '') { currentValue = null; }
+        else {
+          if (!/^-?\d+$/.test(s)) throw new Error('Decimal must be digits only');
+          currentValue = BigInt(s);
+          if (currentValue < 0n) throw new Error('Negative values not supported');
+        }
+      } else if (source === 'hex') {
+        let s = hexInput.value.trim().replace(/^0x/i, '');
+        if (s === '') { currentValue = null; }
+        else {
+          if (!/^[0-9a-fA-F]+$/.test(s)) throw new Error('Hex must be 0-9, A-F');
+          currentValue = BigInt('0x' + s);
+        }
+      } else if (source === 'bin') {
+        const s = binInput.value.trim().replace(/[\s_]/g, '');
+        if (s === '') { currentValue = null; }
+        else {
+          if (!/^[01]+$/.test(s)) throw new Error('Binary must be 0 or 1');
+          currentValue = BigInt('0b' + s);
+        }
+      }
+    } catch (e) {
+      const errEl = source === 'dec' ? decErr : source === 'hex' ? hexErr : binErr;
+      const inputEl = source === 'dec' ? decInput : source === 'hex' ? hexInput : binInput;
+      errEl.textContent = e.message;
+      inputEl.classList.add('error');
+      return;
+    }
+    syncOthers(source);
+    renderViz();
+  }
+
+  function syncOthers(source) {
+    if (currentValue === null) {
+      if (source !== 'dec') decInput.value = '';
+      if (source !== 'hex') hexInput.value = '';
+      if (source !== 'bin') binInput.value = '';
+      return;
+    }
+    if (source !== 'dec') decInput.value = currentValue.toString(10);
+    if (source !== 'hex') hexInput.value = currentValue.toString(16).toUpperCase();
+    if (source !== 'bin') binInput.value = currentValue.toString(2);
+  }
+
+  function renderViz() {
+    if (currentValue === null) {
+      viz.innerHTML = '<div class="empty">Enter a value to see the bit layout</div>';
+      return;
+    }
+
+    const widthMode = widthSel.value;
+    const rawBin = currentValue.toString(2);
+    let width;
+    if (widthMode === 'auto') {
+      width = Math.max(4, Math.ceil(rawBin.length / 4) * 4);
+    } else {
+      width = parseInt(widthMode, 10);
+      if (rawBin.length > width) {
+        width = Math.ceil(rawBin.length / 4) * 4;
+      }
+    }
+
+    const padded = rawBin.padStart(width, '0');
+
+    // bit array: index 0 = bit 0 (LSB). padded[0] is MSB.
+    // We'll render from MSB to LSB, so we iterate padded left to right.
+    // Group into nibbles of 4 bits. Wrap rows every 32 bits for readability.
+
+    const bitsPerRow = 32;
+    const numRows = Math.ceil(width / bitsPerRow);
+
+    let html = '<div class="bit-rows">';
+    for (let r = 0; r < numRows; r++) {
+      // bits in this row, MSB first
+      const rowStartMsbIdx = r * bitsPerRow; // index in padded
+      const rowEndMsbIdx = Math.min(rowStartMsbIdx + bitsPerRow, width);
+      const rowBits = padded.slice(rowStartMsbIdx, rowEndMsbIdx);
+
+      html += '<div class="bit-row">';
+      // chunk into nibbles
+      for (let i = 0; i < rowBits.length; i += 4) {
+        const nibble = rowBits.slice(i, i + 4);
+        // bit index for each char: bit index = width - 1 - (rowStartMsbIdx + i + j)
+        let nibbleHtml = '<div class="nibble"><div class="nibble-bits">';
+        let nibbleHexVal = 0;
+        for (let j = 0; j < nibble.length; j++) {
+          const ch = nibble[j];
+          const bitIdx = width - 1 - (rowStartMsbIdx + i + j);
+          const bitVal = parseInt(ch, 10);
+          const placeVal = bitVal === 1 ? (1n << BigInt(bitIdx)).toString() : '0';
+          nibbleHexVal = nibbleHexVal * 2 + bitVal;
+          nibbleHtml += `<div class="bit ${ch === '1' ? 'one' : 'zero'}" data-idx="${bitIdx}">`
+            + ch
+            + `<div class="tooltip">bit ${bitIdx}${bitVal === 1 ? ` &middot; 2<sup>${bitIdx}</sup> = ${placeVal}` : ''}</div>`
+            + `</div>`;
+        }
+        nibbleHtml += '</div>';
+        // label: hex digit for this nibble, plus bit range
+        const hexDigit = nibbleHexVal.toString(16).toUpperCase();
+        const highBit = width - 1 - (rowStartMsbIdx + i);
+        const lowBit = width - 1 - (rowStartMsbIdx + i + nibble.length - 1);
+        nibbleHtml += `<div class="nibble-label">${hexDigit} <span style="opacity:0.6">[${highBit}:${lowBit}]</span></div>`;
+        nibbleHtml += '</div>';
+        html += nibbleHtml;
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+    viz.innerHTML = html;
+  }
+
+  decInput.addEventListener('input', () => updateFrom('dec'));
+  hexInput.addEventListener('input', () => updateFrom('hex'));
+  binInput.addEventListener('input', () => updateFrom('bin'));
+  widthSel.addEventListener('change', renderViz);
+</script>
+</body>
+</html>
